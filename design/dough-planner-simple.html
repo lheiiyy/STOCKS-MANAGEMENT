@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dough planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout idea: one column, three tabs at the bottom. Today shows one big card per dough size with one sentence and one button. */
+  --bg:#E6ECEB;
+  --panel:#FBFCFB;
+  --ink:#10282C;
+  --muted:#54696D;
+  --line:#C3D0D0;
+  --good:#1F7A5C;
+  --warn:#B77F0B;
+  --bad:#C8402F;
+  --act:#243B8F;
+  --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --font-body:'Public Sans',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.4 var(--font-body);-webkit-text-size-adjust:100%;padding-bottom:70px}
+h1,h2,h3{font-family:var(--font-display);margin:0;font-weight:700;text-wrap:balance}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--act);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding:0 12px}
+
+header{background:var(--ink);color:#EAF2F0;padding:8px 0}
+header .wrap{display:flex;flex-wrap:wrap;gap:0 14px;align-items:baseline;justify-content:space-between}
+header h1{font-size:19px;line-height:1.2}
+header p{margin:0;color:#A9C0BD;font-size:13px}
+
+main{padding-top:10px}
+section[hidden]{display:none}
+.stack{display:grid;gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.top2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:stretch}
+@media (max-width:640px){.top2{grid-template-columns:1fr}}
+.title{font-size:18px;margin:0;display:inline}
+.lead{margin:0 0 0 8px;color:var(--muted);font-size:13.5px;display:inline}
+
+.banner{border-radius:10px;padding:8px 12px;font-weight:600;border:2px solid;background:var(--panel);font-size:15px}
+.banner.good{border-color:var(--good)}
+.banner.bad{border-color:var(--bad)}
+.banner small{display:block;font-weight:400;color:var(--muted);margin-top:0;font-size:13px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.card h3{font-size:16px}
+.tray{color:var(--muted);font-size:12.5px;font-weight:400;font-family:var(--font-body);margin-left:6px}
+.big{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.15;margin:4px 0 2px}
+.sub{margin:0;color:var(--muted);font-size:13.5px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.step{display:inline-flex;align-items:center;border:2px solid var(--act);border-radius:10px;overflow:hidden}
+.step button{border:0;background:transparent;color:var(--act);width:44px;height:44px;font-size:22px;font-weight:700}
+.step button:hover{background:#E3E8F8}
+.step output{min-width:64px;text-align:center;font-weight:600;font-size:14px}
+.btn{min-height:44px;border-radius:10px;border:2px solid var(--act);background:var(--act);color:#fff;font-weight:600;padding:0 16px}
+.btn.ghost{background:transparent;color:var(--act)}
+.btn.done{background:var(--good);border-color:var(--good)}
+details{margin-top:6px;border-top:1px solid var(--line);padding-top:4px}
+summary{cursor:pointer;color:var(--act);font-weight:600;min-height:32px;font-size:14px;display:flex;align-items:center}
+details p{margin:4px 0 4px;color:var(--muted);font-size:13.5px}
+.tag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:14px;font-weight:600;background:#E9ECEC;color:var(--muted)}
+.tag.adj{background:#E3E8F8;color:var(--act)}
+
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;height:100%}
+.day{border-radius:8px;padding:4px 0;text-align:center;background:var(--panel);border:1px solid var(--line);font-size:12px;line-height:1.2;display:flex;flex-direction:column;justify-content:center}
+.day b{display:block;font-size:14px}
+.day.ok{border-color:var(--good)} .day.ok span{color:var(--good);font-weight:600}
+.day.short{border-color:var(--bad);background:#FBEDEA} .day.short span{color:var(--bad);font-weight:700}
+
+.field{display:grid;gap:4px}
+.field label{font-weight:600}
+.field input,.field select{min-height:44px;border:2px solid var(--line);background:#fff;border-radius:10px;padding:0 10px;width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.auto{background:#EDF2F1;border-radius:10px;padding:4px 10px;font-size:13px}
+.auto b{display:block;font-size:18px;font-family:var(--font-display)}
+.msg{margin:0;font-weight:600}
+.msg.bad{color:var(--bad)}
+.seg{display:inline-flex;background:#DCE5E4;border-radius:12px;padding:4px;gap:4px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;min-height:40px;padding:0 12px;border-radius:8px;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:#fff;box-shadow:0 1px 2px rgba(16,40,44,.25)}
+.setting{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
+.setting:last-child{border-bottom:0}
+.setting .t{font-weight:600}
+.setting small{display:block;color:var(--muted);font-weight:400}
+.slot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 0}
+.slot select{min-height:42px;border:2px solid var(--line);border-radius:12px;background:#fff;padding:0 10px}
+.x{border:0;background:transparent;color:var(--bad);font-weight:600;min-height:44px;padding:0 8px}
+.note{font-size:14.5px;color:var(--muted);margin:0}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);z-index:5}
+nav .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:4px;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+nav button{border:0;background:transparent;min-height:50px;border-radius:10px;display:flex;gap:8px;justify-content:center;align-items:center;font-weight:600;color:var(--muted);font-size:14px}
+nav button svg{width:22px;height:22px}
+nav button[aria-current="page"]{color:var(--act);background:#E3E8F8}
+#toast{position:fixed;left:50%;bottom:62px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:9;max-width:90%}
+#toast[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Dough planner</h1>
+    <p id="hdr">Angel's Pizza, Malate</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="v-today" class="stack" aria-labelledby="t-today">
+    <div><h2 class="title" id="t-today">Today</h2><span class="lead" id="todayLead"></span></div>
+    <div class="top2"><div id="banner"></div><div class="week" id="week" aria-label="Next 7 days. Red means there may not be enough usable dough."></div></div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section id="v-count" class="stack" hidden aria-labelledby="t-count">
+    <div><h2 class="title" id="t-count">Daily count</h2><span class="lead">Enter what was received and what is left. The app works out the rest.</span></div>
+    <div id="countCards" class="cards"></div>
+    <button class="btn" type="button" id="saveCount">Save count</button>
+    <p class="note">Sample numbers from your sheet, Monday Nov 9.</p>
+  </section>
+
+  <section id="v-settings" class="stack" hidden aria-labelledby="t-set">
+    <div><h2 class="title" id="t-set">Settings</h2><span class="lead">Changes update the plan right away.</span></div>
+    <div class="card" id="settingsCard"></div>
+    <button class="btn ghost" type="button" id="resetAdj">Clear my quantity changes</button>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<nav aria-label="Main">
+  <div class="wrap">
+    <button type="button" data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Today</button>
+    <button type="button" data-tab="count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Count</button>
+    <button type="button" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
+  </div>
+</nav>
+
+<script>
+(function(){
+  var N=14, WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var SZ={
+    medium:{name:'Medium dough',inch:'9 in',tray:12,start:257,used:[133,129,114,119,109,154,178],cnt:{beg:86,recv:300,wst:0,end:257}},
+    family:{name:'Family dough',inch:'12 in',tray:9,start:356,used:[166,152,148,127,125,165,175],cnt:{beg:283,recv:225,wst:0,end:356}},
+    big:{name:'Big family dough',inch:'14 in',tray:6,start:501,used:[229,169,205,187,213,301,235],cnt:{beg:370,recv:300,wst:0,end:501}}
+  };
+  var KEYS=['medium','family','big'];
+  var S={store:'recv',from:3,to:7,lag:1,buffer:10,round:true,
+    slotsRecv:[{order:6,recv:1},{order:1,recv:3},{order:2,recv:4},{order:3,recv:5},{order:4,recv:6}],
+    slotsOwn:[{prod:1},{prod:3},{prod:5}],over:{},approved:{}};
+  function di(i){var d=new Date(2026,10,16+i);return {wd:d.getDay(),n:d.getDate(),label:WD[d.getDay()]+' '+d.getDate()};}
+  function demand(d,k){return Math.round(SZ[k].used[di(d).wd]*(1+S.buffer/100));}
+  function $(id){return document.getElementById(id);}
+
+  function buildEvents(){
+    var ev=[],i;
+    if(S.store==='recv'){
+      S.slotsRecv.forEach(function(s,si){for(i=0;i<N;i++) if(di(i).wd===s.recv){var gap=((s.recv-s.order+7)%7)||7;ev.push({id:'r'+si+'_'+i,arrive:i,pd:i-S.lag,decide:i-gap});}});
+    } else {
+      S.slotsOwn.forEach(function(s,si){for(i=0;i<N;i++) if(di(i).wd===s.prod) ev.push({id:'o'+si+'_'+i,arrive:i,pd:i,decide:i});});
+    }
+    ev.sort(function(a,b){return a.pd-b.pd||a.arrive-b.arrive;});
+    return ev;
+  }
+  function simulate(evs,k){
+    var batches=[{pd:-2,arrive:-2,qty:SZ[k].start,rem:SZ[k].start,waste:0}];
+    evs.forEach(function(e){if(e.qty>0)batches.push({pd:e.pd,arrive:e.arrive,qty:e.qty,rem:e.qty,waste:0});});
+    var unmet=[],dem=[],d;
+    for(d=0;d<N;d++){
+      var need=demand(d,k);dem[d]=need;
+      batches.filter(function(b){return b.arrive<=d&&d>=b.pd+S.from-1&&d<=b.pd+S.to-1&&b.rem>0;}).sort(function(a,b){return a.pd-b.pd;}).forEach(function(b){var t=Math.min(b.rem,need);b.rem-=t;need-=t;});
+      unmet[d]=need;
+      batches.forEach(function(b){if(d===b.pd+S.to-1)b.waste=b.rem;});
+    }
+    var w=0;batches.forEach(function(b){w+=b.waste;});
+    return {unmet:unmet,dem:dem,waste:w};
+  }
+  function plan(k){
+    var tp=SZ[k].tray,evs=buildEvents(),placed=[];
+    evs.forEach(function(e,j){
+      var next=evs[j+1];
+      e.cs=e.pd+S.from-1;e.ce=e.pd+S.to-1;
+      if(next)e.ce=Math.min(e.ce,next.pd+S.from-2);
+      e.ce=Math.min(e.ce,N-1);
+      if(e.cs>N-1){e.skip=true;e.qty=0;return;}
+      e.qty=0;
+      var r=simulate(placed.concat([e]),k),un=0,need=0,d;
+      for(d=Math.max(e.cs,0);d<=e.ce;d++){un+=r.unmet[d];need+=r.dem[d];}
+      e.need=need;e.have=need-un;
+      e.suggest=S.round?Math.ceil(un/tp)*tp:un;
+      var ov=S.over[k+'|'+e.id];e.adjusted=(ov!=null);
+      e.qty=e.adjusted?ov*tp:e.suggest;
+      e.key=k+'|'+e.id;
+      placed.push(e);
+    });
+    var live=evs.filter(function(e){return !e.skip;});
+    return {events:live,sim:simulate(live,k)};
+  }
+  function all(){var o={};KEYS.forEach(function(k){o[k]=plan(k);});return o;}
+
+  function renderToday(){
+    var P=all(),recv=S.store==='recv';
+    $('hdr').textContent="Angel's Pizza, Malate. Sample date: "+FULL[di(0).wd]+', Nov '+di(0).n;
+    $('todayLead').textContent=recv?'Orders to place today':'Dough to make today';
+    var problems=[],waste=[];
+    KEYS.forEach(function(k){
+      var sd=[];P[k].sim.unmet.forEach(function(u,d){if(u>0)sd.push(di(d).label);});
+      if(sd.length)problems.push(SZ[k].name+' may run short on '+sd.slice(0,3).join(', ')+(sd.length>3?' and more':''));
+      if(P[k].sim.waste>0)waste.push(SZ[k].name+': about '+P[k].sim.waste+' pcs may expire unused');
+    });
+    var b=(problems.length||waste.length)?'<div class="banner bad">Check this plan<small>'+problems.concat(waste).join('. ')+'.</small></div>':'<div class="banner good">All good<small>No shortage and no waste expected in the next 14 days.</small></div>';
+    $('banner').innerHTML=b;
+    var h='';
+    KEYS.forEach(function(k){
+      var z=SZ[k],evs=P[k].events.filter(function(e){return e.decide===0;}),nx=P[k].events.filter(function(e){return e.decide>0&&e.qty>0;}).sort(function(a,b){return a.decide-b.decide;})[0];
+      h+='<article class="card"><h3>'+z.name+'<span class="tray">'+z.inch+', '+z.tray+' pcs/tray</span></h3>';
+      if(!evs.length){
+        h+='<p class="big">Nothing to '+(recv?'order':'make')+' today</p><p class="sub">'+(nx?'Next: '+di(nx.decide).label+', '+(Math.round(nx.qty/z.tray*10)/10)+' trays.':'No more in the next 14 days.')+'</p>';
+      }
+      evs.forEach(function(e){
+        var tr=Math.round(e.qty/z.tray*10)/10,ap=!!S.approved[e.key];
+        h+='<p class="big num">'+(recv?'Order ':'Make ')+tr+' trays</p><p class="sub num">'+e.qty+' pcs. '+(recv?'Arrives '+di(e.arrive).label+'. ':'')+'Covers use on '+(e.ce>=e.cs?di(Math.max(e.cs,0)).label+(e.ce>e.cs?' to '+di(e.ce).label:''):'none')+'.</p>';
+        h+='<div class="row"><span class="step"><button type="button" data-dec="'+e.key+'" aria-label="One tray less for '+z.name+'">&minus;</button><output class="num">'+tr+' trays</output><button type="button" data-inc="'+e.key+'" aria-label="One tray more for '+z.name+'">+</button></span>'
+          +'<button type="button" class="btn'+(ap?' done':'')+'" data-approve="'+e.key+'">'+(ap?'Approved':'Approve')+'</button>'+(e.adjusted?'<span class="tag adj">You changed this</span>':'')+'</div>';
+        h+='<details><summary>Why this number?</summary><p class="num">Expected use for those days is '+e.need+' pcs, including '+S.buffer+'% extra. Usable dough already in the store for those days is '+e.have+' pcs. The difference is '+Math.max(0,e.need-e.have)+' pcs'+(S.round?', rounded up to whole trays.':'.')+'</p></details>';
+      });
+      h+='</article>';
+    });
+    $('cards').innerHTML=h;
+    var w='',i;
+    for(i=0;i<7;i++){
+      var bad=KEYS.some(function(k){return P[k].sim.unmet[i]>0;});
+      w+='<div class="day '+(bad?'short':'ok')+'"><b class="num">'+di(i).n+'</b>'+WD[di(i).wd]+'<br><span>'+(bad?'Short':'OK')+'</span></div>';
+    }
+    $('week').innerHTML=w;
+  }
+
+  function usedOf(k){var c=SZ[k].cnt;return c.beg+c.recv-c.wst-c.end;}
+  function renderCount(){
+    var h='';
+    KEYS.forEach(function(k){
+      var z=SZ[k],c=z.cnt,u=usedOf(k),bad=(u<0);
+      h+='<article class="card stack" data-k="'+k+'"><h3>'+z.name+'<span class="tray">'+z.inch+', in pieces</span></h3>'
+        +'<div class="grid2"><div class="auto">Beginning<b class="num">'+c.beg+' pcs</b></div><div class="field"><label for="r-'+k+'">Received</label><input id="r-'+k+'" data-f="recv" inputmode="numeric" type="number" min="0" value="'+c.recv+'"></div>'
+        +'<div class="field"><label for="w-'+k+'">Wasted</label><input id="w-'+k+'" data-f="wst" inputmode="numeric" type="number" min="0" value="'+c.wst+'"></div>'
+        +'<div class="field"><label for="e-'+k+'">Ending count</label><input id="e-'+k+'" data-f="end" inputmode="numeric" type="number" min="0" value="'+c.end+'"></div></div>';
+      if(c.recv>0){h+='<div class="field"><span style="font-weight:600">Production date of dough received</span><span class="seg" role="group" aria-label="Production date"><button type="button" data-lag="0" aria-pressed="'+(S.lag===0)+'">Same day as delivery</button><button type="button" data-lag="1" aria-pressed="'+(S.lag===1)+'">1 day before</button></span></div>';}
+      h+=bad?'<p class="msg bad">Ending count is higher than what was available. Check the count and enter it again.</p>':'<div class="auto">Used today<b class="num" id="u-'+k+'">'+u+' pcs</b></div>';
+      h+='</article>';
+    });
+    $('countCards').innerHTML=h;
+  }
+
+  function opts(sel){return WD.map(function(w,i){return '<option value="'+i+'"'+(i===sel?' selected':'')+'>'+FULL[i]+'</option>';}).join('');}
+  function renderSettings(){
+    var recv=S.store==='recv',h='';
+    h+='<div class="setting"><div class="t">Where does the dough come from?</div><span class="seg" role="group" aria-label="Dough source"><button type="button" data-store="recv" aria-pressed="'+recv+'">Delivered</button><button type="button" data-store="own" aria-pressed="'+(!recv)+'">We make it</button></span></div>';
+    h+='<div class="setting" style="display:block"><div class="t">'+(recv?'Delivery days':'Days we make dough')+'</div>';
+    if(recv){S.slotsRecv.forEach(function(s,i){h+='<div class="slot"><label>Order <select data-slot="'+i+'" data-f="order">'+opts(s.order)+'</select></label><label>Receive <select data-slot="'+i+'" data-f="recv">'+opts(s.recv)+'</select></label><button class="x" type="button" data-del="'+i+'">Remove</button></div>';});}
+    else{S.slotsOwn.forEach(function(s,i){h+='<div class="slot"><label>Make on <select data-slot="'+i+'" data-f="prod">'+opts(s.prod)+'</select></label><button class="x" type="button" data-del="'+i+'">Remove</button></div>';});}
+    h+='<button class="btn ghost" type="button" id="addSlot">Add '+(recv?'a delivery':'a day')+'</button></div>';
+    h+='<div class="setting"><div><span class="t">Dough can be used from day</span><small>The production date is day 1</small></div><span class="step"><button type="button" data-rule="from-" aria-label="One day earlier">&minus;</button><output class="num" id="vFrom">'+S.from+'</output><button type="button" data-rule="from+" aria-label="One day later">+</button></span></div>';
+    h+='<div class="setting"><div><span class="t">Last day it can be used</span><small>After this it is waste</small></div><span class="step"><button type="button" data-rule="to-" aria-label="One day earlier">&minus;</button><output class="num" id="vTo">'+S.to+'</output><button type="button" data-rule="to+" aria-label="One day later">+</button></span></div>';
+    if(recv)h+='<div class="setting"><div><span class="t">Delivered dough is usually</span><small>Counted from the production date</small></div><span class="seg" role="group" aria-label="Delivery delay"><button type="button" data-lagset="0" aria-pressed="'+(S.lag===0)+'">Same day</button><button type="button" data-lagset="1" aria-pressed="'+(S.lag===1)+'">1 day late</button></span></div>';
+    h+='<div class="setting"><div><span class="t">Extra dough, just in case</span><small>On top of last week\'s use</small></div><span class="step"><button type="button" data-rule="buf-" aria-label="Less extra">&minus;</button><output class="num" id="vBuf">'+S.buffer+'%</output><button type="button" data-rule="buf+" aria-label="More extra">+</button></span></div>';
+    h+='<div class="setting"><div><span class="t">Round up to whole trays</span></div><span class="seg" role="group" aria-label="Round up"><button type="button" data-round="1" aria-pressed="'+S.round+'">Yes</button><button type="button" data-round="0" aria-pressed="'+(!S.round)+'">No</button></span></div>';
+    $('settingsCard').innerHTML=h;
+  }
+
+  var tt;function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},2400);}
+  function show(tab){
+    ['today','count','settings'].forEach(function(n){$('v-'+n).hidden=(n!==tab);});
+    document.querySelectorAll('nav button').forEach(function(b){if(b.dataset.tab===tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+    if(tab==='today')renderToday();
+    window.scrollTo(0,0);
+  }
+  function rerender(){renderToday();renderSettings();renderCount();}
+
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    if(t.dataset.tab){location.hash=t.dataset.tab;return;}
+    if(t.dataset.inc||t.dataset.dec){
+      var key=t.dataset.inc||t.dataset.dec,k=key.split('|')[0],P=plan(k),ev=P.events.filter(function(x){return x.key===key;})[0];if(!ev)return;
+      var cur=Math.round(ev.qty/SZ[k].tray);S.over[key]=Math.max(0,cur+(t.dataset.inc?1:-1));delete S.approved[key];renderToday();return;
+    }
+    if(t.dataset.approve){S.approved[t.dataset.approve]=!S.approved[t.dataset.approve];renderToday();if(S.approved[t.dataset.approve])toast('Approved');return;}
+    if(t.id==='saveCount'){var bad=KEYS.some(function(k){return usedOf(k)<0;});toast(bad?'Fix the count marked in red first':'Count saved');return;}
+    if(t.id==='resetAdj'){S.over={};S.approved={};renderToday();toast('Your changes were cleared');return;}
+    if(t.dataset.store){S.store=t.dataset.store;S.over={};S.approved={};renderSettings();renderToday();return;}
+    if(t.id==='addSlot'){if(S.store==='recv')S.slotsRecv.push({order:1,recv:3});else S.slotsOwn.push({prod:2});S.over={};S.approved={};renderSettings();renderToday();return;}
+    if(t.dataset.del!=null){var arr=S.store==='recv'?S.slotsRecv:S.slotsOwn;if(arr.length>1){arr.splice(+t.dataset.del,1);S.over={};S.approved={};renderSettings();renderToday();}else toast('Keep at least one day');return;}
+    if(t.dataset.lagset!=null){S.lag=+t.dataset.lagset;S.over={};S.approved={};renderSettings();renderToday();return;}
+    if(t.dataset.lag!=null){S.lag=+t.dataset.lag;S.over={};S.approved={};renderCount();renderToday();return;}
+    if(t.dataset.round!=null){S.round=t.dataset.round==='1';S.over={};S.approved={};renderSettings();renderToday();return;}
+    if(t.dataset.rule){
+      var r=t.dataset.rule;
+      if(r==='from-')S.from=Math.max(1,S.from-1);
+      if(r==='from+')S.from=Math.min(S.to,S.from+1);
+      if(r==='to-')S.to=Math.max(S.from,S.to-1);
+      if(r==='to+')S.to=Math.min(10,S.to+1);
+      if(r==='buf-')S.buffer=Math.max(0,S.buffer-5);
+      if(r==='buf+')S.buffer=Math.min(40,S.buffer+5);
+      $('vFrom').textContent=S.from;$('vTo').textContent=S.to;$('vBuf').textContent=S.buffer+'%';
+      S.over={};S.approved={};renderToday();return;
+    }
+  });
+  document.addEventListener('change',function(e){
+    var t=e.target;
+    if(t.dataset&&t.dataset.slot!=null){var arr=S.store==='recv'?S.slotsRecv:S.slotsOwn;arr[+t.dataset.slot][t.dataset.f]=+t.value;S.over={};S.approved={};renderToday();}
+  });
+  document.addEventListener('input',function(e){
+    var t=e.target,card=t.closest&&t.closest('[data-k]');
+    if(card&&t.dataset.f){
+      var k=card.dataset.k;SZ[k].cnt[t.dataset.f]=Math.max(0,parseInt(t.value,10)||0);
+      var u=usedOf(k),el=$('u-'+k),id=t.id;
+      if(u<0||!el||t.dataset.f==='recv'){renderCount();var f=$(id);if(f){f.focus();try{f.setSelectionRange(f.value.length,f.value.length);}catch(x){}}}
+      else el.textContent=u+' pcs';
+    }
+  });
+  function route(){var h=(location.hash||'#today').slice(1);if(['today','count','settings'].indexOf(h)<0)h='today';show(h);}
+  window.addEventListener('hashchange',route);
+  renderSettings();renderCount();route();
+})();
+</script>
+</body>
+</html>
